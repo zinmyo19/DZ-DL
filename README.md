@@ -59,4 +59,4 @@ Export `cookies.txt` from your browser (e.g. with a cookies extension) and put i
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GPL v3 — see [LICENSE](LICENSE). Free to use and share; anyone who distributes it (modified or not) must keep it open under the same license — it cannot be closed up and resold as a proprietary product.
