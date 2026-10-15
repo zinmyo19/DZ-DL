@@ -1,81 +1,107 @@
 #!/bin/bash
-# Termux Downloader — URL opener (hacker-style).
+# DZ-TERMUX Downloader — URL opener.
 # Share any URL to Termux -> this runs with the URL as $1.
 # Install: copy to ~/bin/termux-url-opener, then chmod +x ~/bin/termux-url-opener
 
+# Check if URL is provided
 if [ -z "$1" ]; then
-    echo -e "\033[91m[✗] Error: No URL found.\033[0m"
+    echo "[x] Error: No URL found."
     exit 1
 fi
 
-GREEN="\033[92m"; CYAN="\033[96m"; RED="\033[91m"
-YELLOW="\033[93m"; MAGENTA="\033[95m"; BOLD="\033[1m"
-DIM="\033[2m"; RESET="\033[0m"
+G=$'\e[92m'; C=$'\e[96m'; Y=$'\e[93m'; R=$'\e[91m'; D=$'\e[90m'; B=$'\e[1m'; N=$'\e[0m'
+
+say() {  # say <color> <tag> <text>
+    printf '%s[%s]%s ' "$1" "$2" "$N"
+    local text="$3" i
+    for ((i = 0; i < ${#text}; i++)); do
+        printf '%s' "${text:i:1}"
+        sleep 0.004
+    done
+    printf '\n'
+}
+
+check() {  # check <command> <label>
+    if command -v "$1" > /dev/null 2>&1; then
+        say "$G" "+" "$2: ok"
+    else
+        say "$Y" "!" "$2: missing"
+    fi
+}
 
 clear
-echo -e "${GREEN}${BOLD}"
-cat << 'EOF'
-████  █████       █████ █████ ████  █   █ █   █ █   █
-█   █    █          █   █     █   █ ██ ██ █   █  █ █
-█   █   █   █████   █   ████  ████  █ █ █ █   █   █
-█   █  █            █   █     █ █   █   █ █   █  █ █
-████  █████         █   █████ █  █  █   █  ███  █   █
-EOF
-echo -e "${RESET}"
-echo -e "${CYAN}${BOLD}  [+] DZ-TERMUX DOWNLOADER // URL OPENER${RESET}"
-echo -e "${DIM}  [~] video | file | audio | ytdl${RESET}"
-echo -e "${MAGENTA}  ============================================${RESET}"
-echo -e "  Link: ${CYAN}$1${RESET}"
-echo ""
+echo
+printf '%s' "$G"
+cat << 'LOGO' | sed 's/^/  /'
+ ____ _____     ____  _     
+|  _ \__  /    |  _ \| |    
+| | | |/ /_____| | | | |    
+| |_| / /|_____| |_| | |___ 
+|____/____|    |____/|_____|
+LOGO
+printf '%s' "$N"
+echo "${C}${B}  [+] DZ-TERMUX DOWNLOADER // URL OPENER${N}"
+echo "${D}  [~] video | file | audio | ytdl${N}"
+echo "${D}   --------------------------------------${N}"
+check yt-dlp "yt-dlp "
+check ffmpeg "ffmpeg "
+check aria2c "aria2c "
+say "$C" "*" "target: $1"
+echo
+echo "${C}[?]${N} select mode:"
+echo "    ${G}1)${N} Video   best quality (up to 4K)"
+echo "    ${G}2)${N} File    aria2 multi-connection"
+echo "    ${G}3)${N} Audio   MP3"
+echo "    ${G}4)${N} YTDL    choose quality + cookies"
+echo "    ${G}b)${N} Back"
+echo "    ${G}q)${N} Quit"
+read -r -p "${C}[?]${N} choice [1-4/b/q]: " choice
+echo
 
-# tiny boot animation (cosmetic, ~0.5s)
-for f in '|' '/' '-' '\'; do printf "\r  ${YELLOW}[~] Loading modules... %s${RESET}" "$f"; sleep 0.12; done
-printf "\r  ${GREEN}[+] Modules loaded.                      ${RESET}\n\n"
-
-echo -e "${CYAN}Select Download Option:${RESET}"
-echo -e "  ${GREEN}[1]${RESET} 🎬 Video (Best Quality - Up to 4K)"
-echo -e "  ${GREEN}[2]${RESET} 📦 File / Zip (aria2)"
-echo -e "  ${GREEN}[3]${RESET} 🎵 Audio (MP3)"
-echo -e "  ${GREEN}[4]${RESET} 🐍 ytdl (choose quality + cookies)"
-echo -e "  ${GREEN}[q]${RESET} 🚪 Quit"
-echo -e "${MAGENTA}============================================${RESET}"
-read -p "$(echo -e "${CYAN}Enter number 1, 2, 3, 4, or q: ${RESET}")" choice
-
+rc=0
 if [ "$choice" = "1" ]; then
-    echo -e "${GREEN}[>] Downloading video in best available quality...${RESET}"
-    # 4K / Best quality selection
-    yt-dlp -N 10 --downloader aria2c --downloader-args aria2c:"-x 16 -s 16 -k 1M" \
-        -f "bestvideo+bestaudio/best" --merge-output-format mp4 \
-        -P "$HOME/storage/shared/Movies/" "$1"
+    say "$C" "*" "downloading video in best available quality..."
+    yt-dlp -N 10 --downloader aria2c --downloader-args aria2c:"-x 16 -s 16 -k 1M" -f "bestvideo+bestaudio/best" --merge-output-format mp4 -P "$HOME/storage/shared/Movies/" "$1"
+    rc=$?
 
 elif [ "$choice" = "2" ]; then
-    echo -e "${GREEN}[>] Downloading file via aria2...${RESET}"
+    say "$C" "*" "downloading file via aria2..."
     aria2c -x 16 -s 16 -k 1M -d "$HOME/storage/shared/Download/Files" "$1"
+    rc=$?
 
 elif [ "$choice" = "3" ]; then
-    echo -e "${GREEN}[>] Downloading audio as MP3...${RESET}"
-    yt-dlp -x --audio-format mp3 --audio-quality 0 \
-        -P "$HOME/storage/shared/Download/Music" "$1"
+    say "$C" "*" "downloading audio as MP3..."
+    yt-dlp -x --audio-format mp3 --audio-quality 0 -P "$HOME/storage/shared/Download/Music" "$1"
+    rc=$?
 
 elif [ "$choice" = "4" ]; then
     if [ ! -f "$HOME/ytdl.py" ]; then
-        echo -e "${RED}[✗] ytdl.py not found in home folder.${RESET}"
-        echo -e "${YELLOW}    Put ytdl.py in Termux home (~) and try again.${RESET}"
+        say "$R" "x" "ytdl.py not found in home folder."
+        say "$Y" "!" "put ytdl.py in Termux home (~) and try again."
         exit 1
     fi
-    echo -e "${GREEN}[>] Launching ytdl module...${RESET}"
+    say "$C" "*" "launching ytdl module..."
     python "$HOME/ytdl.py" "$1"
+    rc=$?
+
+elif [ "$choice" = "b" ]; then
+    say "$D" "*" "bye."
+    exit 0
 
 elif [ "$choice" = "q" ]; then
-    echo -e "${DIM}Bye.${RESET}"
+    say "$D" "*" "bye."
     exit 0
 
 else
-    echo -e "${RED}[✗] Invalid selection. Exiting.${RESET}"
+    say "$R" "x" "invalid selection, exiting."
     exit 1
 fi
 
-echo -e "${MAGENTA}============================================${RESET}"
-echo -e "${GREEN}[+] Download finished successfully!${RESET}"
-echo -e "Check your device's Download folder."
-echo -e "${MAGENTA}============================================${RESET}"
+echo
+echo "${D}   --------------------------------------${N}"
+if [ "$rc" -eq 0 ]; then
+    say "$G" "+" "finished successfully"
+else
+    say "$R" "x" "finished with errors (exit code $rc)"
+fi
+echo "${D}   check your device's Download folder${N}"
